@@ -9,7 +9,7 @@ pip install -r requirements.txt
 ```
 
 ## Notebooks
-Run the `jupyter` server in the directory: `explainable-prescriptive-analytics` the project directory, it shouldn't be 
+Run the `jupyter` server in the directory: `Prescriptive-Process-Analytics-using-Counterfactuals` the project directory, it shouldn't be 
 running in the `src` directory.
 
 ### 00_preprocess_event_logs.ipynb
@@ -30,6 +30,9 @@ This notebook uses a different ML model (possibly trained on all the data) to ev
 
 
 ## CounterFactual Examples (CFEs) Scripts
+Run the sripts from the directory: `Prescriptive-Process-Analytics-using-Counterfactuals` the project directory, it shouldn't be 
+running in the `src` directory.
+
 ### To run scripts on the server.
 1. copy script E.g. `script_06...` to the Dice method name followed by some identifier (for tracking)
    e.g. name: `gradient-a01.py`
@@ -39,7 +42,7 @@ This notebook uses a different ML model (possibly trained on all the data) to ev
    - `RESULTS_FILE_PATH_N_NAME`: this also comes from file name
    - Change any other parameter you want.
    
-3. Run the command: `run_script.sh gradient-a01 --first_run`.
+3. Run the command: `./run_script.sh gradient-a01 --first_run`.
 
 ## ML model Tuning Scripts
 ### To run `script_07`
@@ -83,3 +86,26 @@ File: `resutls_vf.ods` - contains the results of the experiments.
 Column explanation is as follows:
 - exp_name: Experiment name
 - run time (days): New predicted time for completing all the cases given the best recommendations in the CFEs produced.
+
+## Work on Remote Machine
+
+### Start the virtual environment
+```bash
+source py-env/bin/activate
+```
+
+### Instructions to setting up Python with admin/ sudo privileges
+
+1. Download the desired python version from the official website. E.g. `Python-3.11.5.tgz`
+2. Unzip it using `tar -xvf Python-3.11.5.tgz`
+3. Install the Python version:
+
+   a. `cd Python-3.11.5`
+   b. `./configure --prefix=/path_to_install_python/python`
+
+3. #### Create a Virtual Environment Using the New Python Version:
+Use the installed Python's path to create a new virtual environment. Replace `/path_to_installed_python/python` with the 
+path where you've installed the new Python version.
+   ```bash
+   virtualenv -p /path_to_installed_python/python py-311
+   ```
