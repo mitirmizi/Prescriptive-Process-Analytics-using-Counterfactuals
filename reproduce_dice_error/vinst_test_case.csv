@@ -1,0 +1,12 @@
+SR_Number,Change_Date+Time,Status,ACTIVITY,Involved_ST_Function_Div,Involved_Org_line_3,Involved_ST,SR_Latest_Impact,Product,Country,Owner_Country,time_from_first,time_from_previous_et,time_from_midnight,weekday,time_remaining,# ACTIVITY=In Progress,# ACTIVITY=Awaiting Assignment,# ACTIVITY=Resolved,# ACTIVITY=Assigned,# ACTIVITY=Closed,# ACTIVITY=Wait - User,# ACTIVITY=Wait - Implementation,# ACTIVITY=Wait,# ACTIVITY=Wait - Vendor,# ACTIVITY=In Call,# ACTIVITY=Wait - Customer,# ACTIVITY=Unmatched,# ACTIVITY=Cancelled,lead_time
+1-587101946,1318588616,Accepted,In Progress,A2_1,Org line C,D6,Medium,PROD308,be,Belgium,0,0,38216,Friday,18535558,0,0,0,0,0,0,0,0,0,0,0,0,0,18535558
+1-587101946,1318588716,Accepted,In Progress,A2_1,Org line C,D6,Medium,PROD308,be,Belgium,100,100,38316,Friday,18535458,1,0,0,0,0,0,0,0,0,0,0,0,0,18535558
+1-587101946,1318589067,Queued,Awaiting Assignment,missing,Other,V46 2nd,Medium,PROD308,be,Belgium,451,351,38667,Friday,18535107,2,0,0,0,0,0,0,0,0,0,0,0,0,18535558
+1-587101946,1318605947,Accepted,In Progress,missing,Other,V46 2nd,Medium,PROD308,be,United Kingdom,17331,16880,55547,Friday,18518227,2,1,0,0,0,0,0,0,0,0,0,0,0,18535558
+1-587101946,1319015029,Accepted,Wait - User,missing,Other,V46 2nd,Medium,PROD308,be,United Kingdom,426413,409082,32629,Wednesday,18109145,3,1,0,0,0,0,0,0,0,0,0,0,0,18535558
+1-587101946,1319115272,Accepted,In Progress,missing,Other,V46 2nd,Medium,PROD308,be,United Kingdom,526656,100243,46472,Thursday,18008902,3,1,0,0,0,1,0,0,0,0,0,0,0,18535558
+1-587101946,1319648828,Accepted,Wait - Implementation,missing,Other,V46 2nd,Medium,PROD308,be,United Kingdom,1060212,533556,61628,Wednesday,17475346,4,1,0,0,0,1,0,0,0,0,0,0,0,18535558
+1-587101946,1332250810,Accepted,Wait - User,missing,Other,V46 2nd,Medium,PROD308,be,United Kingdom,13662194,12601982,49210,Tuesday,4873364,4,1,0,0,0,1,1,0,0,0,0,0,0,18535558
+1-587101946,1337074899,Accepted,In Progress,missing,Other,V46 2nd,Medium,PROD308,be,Sweden,18486283,4824089,34899,Tuesday,49275,4,1,0,0,0,2,1,0,0,0,0,0,0,18535558
+1-587101946,1337074971,Queued,Awaiting Assignment,A2_1,Org line C,D6,Medium,PROD308,be,Sweden,18486355,72,34971,Tuesday,49203,5,1,0,0,0,2,1,0,0,0,0,0,0,18535558
+1-587101946,1337075271,Accepted,In Progress,A2_1,Org line C,D6,Medium,PROD308,be,Belgium,18486655,300,35271,Tuesday,48903,5,2,0,0,0,2,1,0,0,0,0,0,0,18535558
