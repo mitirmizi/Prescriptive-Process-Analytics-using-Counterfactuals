@@ -99,13 +99,25 @@ source py-env/bin/activate
 1. Download the desired python version from the official website. E.g. `Python-3.11.5.tgz`
 2. Unzip it using `tar -xvf Python-3.11.5.tgz`
 3. Install the Python version:
-
+ALso there was a need to install openssl manually
    a. `cd Python-3.11.5`
    b. `./configure --prefix=/path_to_install_python/python`
+   b. ./configure --with-openssl=/home/0/2022/mtirmizi/softwares/openssl --enable-optimizations --prefix=/home/0/2022/mtirmizi/.localpy310
+   c. `make`
+   d. `make install`
+
+on remote server I had to add the PATH variable using ~/.bash_profile file.
 
 3. #### Create a Virtual Environment Using the New Python Version:
 Use the installed Python's path to create a new virtual environment. Replace `/path_to_installed_python/python` with the 
 path where you've installed the new Python version.
    ```bash
-   virtualenv -p /path_to_installed_python/python py-311
+   /home/0/2022/mtirmizi/.localpy310/bin/virtualenv -p /path_to_installed_python/python py-311
    ```
+thus full path:
+```bash
+home/0/2022/mtirmizi/.localpy310/bin/virtualenv -p /home/0/2022/mtirmizi/.localpy310/bin/python3 py-env
+```
+
+to activate:
+source py-env/bin/activate

@@ -5,12 +5,14 @@ from dice_ml.utils.exception import UserConfigValidationException
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
 from sklearn.compose import ColumnTransformer
-from sklearn.ensemble import RandomForestRegressor
+from sklearn.ensemble import RandomForestClassifier
+from imblearn.ensemble import BalancedRandomForestClassifier
 
 from src.transition_system import transition_system, indexs_for_window, list_to_str
 from src.function_store import StoreTestRun, extract_algo_name, generate_cfe, get_case_id, prepare_df_for_ml, \
-    activity_n_resources, get_test_cases, get_prefix_of_activities, validate_transition
+    activity_n_resources, get_test_cases, get_prefix_of_activities, validate_transition, download_remote_models
 
+import joblib
 from datetime import datetime
 from time import time
 import argparse
@@ -30,13 +32,13 @@ SECONDS_TO_DAYS = 60 * 60 * 24
 
 if __name__ == '__main__':
     start_time = time()
+
     ################################
     # Parse command line arguments
     ################################
     parser = argparse.ArgumentParser(description='Script for Testing DiCE algorithm. The script runs the algorithm with'
                                                  'desired configuration on a test dataset.')
     parser.add_argument('--first_run', action='store_true', help="Use this flag if this is the first time running the script.")
-    # TODO: add a flag to denote "use file name as the method name mode"
     args = parser.parse_args()
 
     print(f"========================= Program Start at: {datetime.fromtimestamp(start_time)} =========================")
@@ -51,15 +53,15 @@ if __name__ == '__main__':
     # Uses DiCE algo method as the first word of the .csv file.
     # Just for running these many experiments. Going to duplicate this as template. Each experiment run will have its
     # own script copy. This creates many duplicate files, but its allows to spot the experiment name in the `htop` tool.
-    # RESULTS_FILE_PATH_N_NAME = "experiment_results/random-t01-total_time.csv"  # Default template name
+    # RESULTS_FILE_PATH_N_NAME = "experiment_results/random-a01-activity_occurrence.csv"  # Default template name
     RESULTS_FILE_PATH_N_NAME = f"experiment_results/{current_file_name.split('.')[0]}.csv"
-    configs = {"kpi": "total_time",                             # "activity_occurrence", "total_time"
+    configs = {"kpi": "activity_occurrence",
                "window_size": 4,
-               "reduced_kpi_time": 90,
+               # "reduced_kpi_time": 90,                                      # Not used in script_03
                "total_cfs": 50,                                  # Number of CFs DiCE algorithm should produce
                "dice_method": extract_algo_name(RESULTS_FILE_PATH_N_NAME),  # genetic, kdtree, random
                "save_load_result_path": RESULTS_FILE_PATH_N_NAME,
-               "train_dataset_size": 39_375,                                   # 39_375
+               "train_dataset_size": 164_927,                                   # 164_927
                "proximity_weight": 0.2,
                "sparsity_weight": 0.2,
                "diversity_weight": 5.0,
@@ -68,7 +70,7 @@ if __name__ == '__main__':
     state_obj = StoreTestRun(save_load_path=RESULTS_FILE_PATH_N_NAME)
     save_load_path = state_obj.get_save_load_path()
 
-    if os.path.exists(save_load_path) and args.first_run:  # TODO: This check is not thorought enough, improve it.
+    if os.path.exists(save_load_path) and args.first_run:
         raise FileExistsError(f"This is program's first run yet the pickle file: {save_load_path} exists. Please remove"
                               f"it to run it with the flag --first_run")
 
@@ -87,16 +89,15 @@ if __name__ == '__main__':
 
     print("Configs:", configs)
 
-    case_id_name = 'SR_Number'  # The case identifier column name.
-    start_date_name = 'Change_Date+Time'  # Maybe change to start_et (start even time)
+    case_id_name = 'REQUEST_ID'  # The case identifier column name.
     activity_column_name = "ACTIVITY"
-    resource_column_name = "Involved_ST"
+    resource_column_name = "CE_UO"
 
     data_dir = "./preprocessed_datasets/"
-    train_dataset_file = "vinst_train.csv"
-    # test_dataset_file = "vinst_test.csv"
-    test_pickle_dataset_file = "vinst_test.pkl"
-    df = pd.read_csv("./data/VINST cases incidents.csv")  # Use full dataset for transition systens
+    train_dataset_file = "bank_acc_train.csv"
+    # test_dataset_file = "bank_acc_test.csv"
+    test_pickle_dataset_file = "bank_acc_test.pkl"
+    df = pd.read_csv("./data/bank_account_closure.csv")  # Use full dataset for transition systens
     df_train = pd.read_csv(os.path.join(data_dir, train_dataset_file))
     # df_test = pd.read_csv(os.path.join(data_dir, test_dataset_file))
 
@@ -108,19 +109,25 @@ if __name__ == '__main__':
 
     cols_to_vary = [activity_column_name, resource_column_name]
 
-    outcome_name = "lead_time"
+    outcome_name = "Back-Office Adjustment Requested"
 
-    X_train, y_train = prepare_df_for_ml(df_train, case_id_name, outcome_name, columns_to_remove=["Change_Date+Time", "time_remaining"])
+    X_train, y_train = prepare_df_for_ml(df_train, case_id_name, outcome_name, columns_to_remove=["START_DATE", "END_DATE", "time_remaining"])
 
-    continuous_features = ["time_from_first", "time_from_previous_et", "time_from_midnight", "# ACTIVITY=In Progress",
-                           "# ACTIVITY=Awaiting Assignment",
-                           "# ACTIVITY=Resolved", "# ACTIVITY=Assigned", "# ACTIVITY=Closed", "# ACTIVITY=Wait - User",
-                           "# ACTIVITY=Wait - Implementation", "# ACTIVITY=Wait",
-                           "# ACTIVITY=Wait - Vendor", "# ACTIVITY=In Call", "# ACTIVITY=Wait - Customer",
-                           "# ACTIVITY=Unmatched", "# ACTIVITY=Cancelled"]
-    categorical_features = ["Status", "ACTIVITY", "Involved_ST_Function_Div", "Involved_Org_line_3", "Involved_ST",
-                            "SR_Latest_Impact", "Product", "Country", "Owner_Country",
-                            "weekday"]
+    continuous_features = ["time_from_first", "time_from_previous_et", "time_from_midnight", "activity_duration",
+                           '# ACTIVITY=Service closure Request with network responsibility',
+                           '# ACTIVITY=Service closure Request with BO responsibility',
+                           '# ACTIVITY=Pending Request for Reservation Closure',
+                           '# ACTIVITY=Pending Liquidation Request',
+                           '# ACTIVITY=Request completed with account closure', '# ACTIVITY=Request created',
+                           '# ACTIVITY=Authorization Requested',
+                           '# ACTIVITY=Evaluating Request (NO registered letter)',
+                           '# ACTIVITY=Network Adjustment Requested',
+                           '# ACTIVITY=Pending Request for acquittance of heirs',
+                           '# ACTIVITY=Request deleted', '# ACTIVITY=Back-Office Adjustment Requested',
+                           '# ACTIVITY=Evaluating Request (WITH registered letter)',
+                           '# ACTIVITY=Request completed with customer recovery',
+                           '# ACTIVITY=Pending Request for Network Information', ]
+    categorical_features = ["CLOSURE_TYPE", "CLOSURE_REASON", "ACTIVITY", "CE_UO", "ROLE", "weekday"]
 
     # We create the preprocessing pipelines for both numeric and categorical data.
     numeric_transformer = Pipeline(steps=[
@@ -134,24 +141,39 @@ if __name__ == '__main__':
             ('num', numeric_transformer, continuous_features),
             ('cat', categorical_transformer, categorical_features)])
 
-    # Append classifier to preprocessing pipeline.
-    # Now we have a full prediction pipeline.
-    clf = Pipeline(steps=[('preprocessor', transformations),
-                          ('classifier', RandomForestRegressor(n_jobs=7))])
-    model = clf.fit(X_train, y_train)
+    if os.path.exists(f"./ml_models/tuned_random_forest.joblib"):
+        print(f"Loading model: ./ml_models/tuned_random_forest.joblib")
+        model = joblib.load(f"./ml_models/tuned_random_forest.joblib")
+    else:
+        # Append classifier to preprocessing pipeline.
+        # Now we have a full prediction pipeline.
+        clf = Pipeline(steps=[('preprocessor', transformations),
+                              # F1-socre on cut test set: 0.75
+                              ('classifier', BalancedRandomForestClassifier(criterion='gini',
+                                                                            max_depth=None,
+                                                                            max_features='sqrt',
+                                                                            min_samples_leaf=1,
+                                                                            min_samples_split=2,
+                                                                            n_estimators=100,
+                                                                            replacement=False,
+                                                                            sampling_strategy='not minority',
+                                                                            n_jobs=7))])
+        model = clf.fit(X_train, y_train)
+        print(f"Saving model: ./ml_models/tuned_random_forest.joblib")
+        joblib.dump(model, os.path.join(f"./ml_models", 'tuned_random_forest.joblib'))
 
     print("=================== Create DiCE model ===================")
+    # ## Create DiCE model
     data_model = dice_ml.Data(dataframe=pd.concat([X_train, y_train], axis="columns"),
-                              continuous_features=continuous_features,
-                              outcome_name=outcome_name)
+                          continuous_features=continuous_features,
+                          outcome_name=outcome_name)
 
     # We provide the type of model as a parameter (model_type)
-    ml_backend = dice_ml.Model(model=model, backend="sklearn", model_type='regressor')
+    ml_backend = dice_ml.Model(model=model, backend="sklearn", model_type='classifier')
     method = configs["dice_method"]
     explainer = Dice(data_model, ml_backend, method=method)
 
-    # === Load activity and resource compatibility thingy
-    resource_columns_to_validate = [activity_column_name, resource_column_name, 'Country', 'Owner_Country']
+    resource_columns_to_validate = [activity_column_name, resource_column_name]
     valid_resources = activity_n_resources(df, resource_columns_to_validate, threshold_percentage=100)
 
     # === Load the Transition Graph
@@ -162,23 +184,30 @@ if __name__ == '__main__':
     start_from_case = state_obj.run_state["cases_done"]
     for df_test_trace in test_cases[start_from_case:]:
         trace_start_time = time()
-        query_case_id = get_case_id(df_test_trace)
+        query_case_id = get_case_id(df_test_trace, case_id_name=case_id_name)
         print("--- Start Loop ---,", query_case_id)
         # if 0 < len(df_test_trace) <= 2:
-        #     print("too small", cases_done, query_case_id)
+        #     print("too small", cases_done, df_test_trace[case_id_name].unique().item())
         #     result_value = query_case_id
         #     state_obj.add_cfe_to_results(("cases_too_small", result_value))
         #     cases_stored = state_obj.save_state()
         #     cases_done += 1
         #     continue
 
-        X_test, y_test = prepare_df_for_ml(df_test_trace, case_id_name, outcome_name, columns_to_remove=["Change_Date+Time", "time_remaining"])
+        X_test, y_test = prepare_df_for_ml(df_test_trace, case_id_name, outcome_name, columns_to_remove=["START_DATE", "END_DATE", "time_remaining"])
+
+        # # Check if y_test is 0 then don't generate CFE
+        # if y_test.iloc[-1] == 0:
+        #     result_value = query_case_id
+        #     state_obj.add_cfe_to_results(("cases_zero_in_y", result_value))
+        #     cases_stored = state_obj.save_state()
+        #     cases_done += 1
+        #     continue
+
         # Access the last row of the truncated trace to replicate the behavior of a running trace
         query_instances = X_test.iloc[-1:]
-        total_time_upper_bound = int( y_test.iloc[-1] * ( configs["reduced_kpi_time"] / 100) )  # A percentage of the original total time of the trace
-
         try:
-            cfe = generate_cfe(explainer, query_instances, total_time_upper_bound, features_to_vary=cols_to_vary,
+            cfe = generate_cfe(explainer, query_instances, total_time_upper_bound=None, features_to_vary=cols_to_vary,
                                total_cfs=configs["total_cfs"], kpi=configs["kpi"], proximity_weight=configs["proximity_weight"],
                                sparsity_weight=configs["sparsity_weight"], diversity_weight=configs["diversity_weight"])
             result_value = (query_case_id, cfe)
@@ -199,12 +228,13 @@ if __name__ == '__main__':
 
             cases_stored = state_obj.save_state()
 
-        except UserConfigValidationException:
+        except UserConfigValidationException as err:
             # Save the time it took to generate the CFEs
             trace_time = round(((time() - trace_start_time) / 60), 4)
             state_obj.add_cfe_to_results(("trace_time", trace_time))
 
             result_value = query_case_id
+            print("UserConfigValidationException caught:", err)
             state_obj.add_cfe_to_results(("cfe_not_found", result_value))
             cases_stored = state_obj.save_state()
 
@@ -217,17 +247,14 @@ if __name__ == '__main__':
             print("TimeoutError caught:", err)
             state_obj.add_cfe_to_results(("cfe_not_found", result_value))
             cases_stored = state_obj.save_state()
-
         except ValueError:
             # Save the time it took to generate the CFEs
             trace_time = round(((time() - trace_start_time) / 60), 4)
             state_obj.add_cfe_to_results(("trace_time", trace_time))
-
             # print(f"Includes feature not found in training data: {get_case_id(df_test_trace)}")
             result_value = query_case_id
             state_obj.add_cfe_to_results(("cases_includes_new_data", result_value))
             cases_stored = state_obj.save_state()
-
         # This error is seen occurring on when running lots of loops on the server
         except AttributeError as e:
             # Save the time it took to generate the CFEs
@@ -237,7 +264,6 @@ if __name__ == '__main__':
             print("AttributeError caught:", e)
             state_obj.add_cfe_to_results(("exceptions", query_case_id))
             cases_stored = state_obj.save_state()
-
         except Exception as err:
             # Save the time it took to generate the CFEs
             trace_time = round(((time() - trace_start_time) / 60), 4)
@@ -254,7 +280,7 @@ if __name__ == '__main__':
 
         print(f"Time it took: {trace_time} minutes")
         cases_done += 1
-        # if i >= 20:
+        # if cases_done >= 5:
         #     break
         # ----------------------------------------------------------------
 
