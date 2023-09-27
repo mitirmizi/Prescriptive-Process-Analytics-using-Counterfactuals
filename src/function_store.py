@@ -37,6 +37,11 @@ class SamplingStrategy:
     Gradient = 'gradient'
 
 
+class ModelType:
+    Regression = 'regression'
+    Classification = 'classification'
+
+
 class SetupVariables:
     def __init__(self, dataset = None ):
         if dataset is None:
@@ -89,6 +94,7 @@ class SetupVariables:
             self.df_test = pd.read_csv(os.path.join(self.data_dir, self.test_dataset_file))
             # rar: Resource Aware Recommendations
             self.df_rar = pd.read_csv( os.path.join(self.results_dir, "rar_gkpi_results_BAC_act.csv") )
+
         self.df = self.df.fillna("missing")
         self.test_cases = get_test_cases(None, None, load_dataset=True,
                                          path_and_filename=os.path.join(self.data_dir, self.test_pickle_dataset_file))
